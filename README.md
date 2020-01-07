@@ -104,6 +104,6 @@ op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
 k, b, nl_params, lam_log_train, lam_log_validation, fitting_phase, fit_params = op
 ```
 
-The subunits are cleaner (less background noise) for for LNL1 regularization.
+The subunits are cleaner (less background noise) for LNL1 regularization.
 ![su_reg](doc/su_reg.png "Regularization")
 
