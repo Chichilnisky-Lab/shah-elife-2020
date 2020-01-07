@@ -12,7 +12,7 @@ rng = np.random
 
 
 def compute_fr_loss(K, b, X_in, Y_in, nl_params=np.expand_dims(np.array([1.0, 0.0]), 1)):
-  """ Compute firing rate and loss.
+  """Compute firing rate and loss.
 
   Args :
     K : Subunit filters, (dims: # n_pix x #SU).
@@ -34,7 +34,7 @@ def compute_fr_loss(K, b, X_in, Y_in, nl_params=np.expand_dims(np.array([1.0, 0.
 
 
 def get_neighbormat(mask_matrix, nbd=1):
-  """ Compute the adjacency matrix for nearby pixels
+  """Compute the adjacency matrix for nearby pixels
   
   Args: 
     mask_matrix : 2D visual stimulus mask, active pixels are 1 (dims : # stimulus dim 1 x # stimulus dim 2).
@@ -67,7 +67,7 @@ def spike_triggered_clustering(X, Y, Ns, tms_tr, tms_tst, K=None, b=None,
                                lam_proj=0, eps_proj=0.01,
                                save_filename_partial=None,
                                fitting_phases=[1, 2, 3]):
-  """ Subunit estimation using spike triggered clustering.
+  """Subunit estimation using spike triggered clustering.
   
   The fitting proceeds in three phases - 
   First phase: Ignoring the output nonlinearity and soft-clustering of spike triggered stimuli to estimate K and b.
