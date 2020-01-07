@@ -55,7 +55,7 @@ op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
                                          fitting_phases=[1, 2, 3])
 k, b, nl_params, lam_log_train, lam_log_validation, fitting_phase, fit_params = op
 ```
-[su_noreg](doc/su_noreg.png "No regularization")
+![su_noreg](doc/su_noreg.png "No regularization")
 
 Evaluate fits
 
