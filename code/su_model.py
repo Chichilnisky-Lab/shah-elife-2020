@@ -14,12 +14,16 @@ rng = np.random
 def compute_fr_loss(K, b, X_in, Y_in, nl_params=np.expand_dims(np.array([1.0, 0.0]), 1)):
   """ Compute firing rate and loss.
 
-  Args:
-    K : # n_pix x #SU
-    b : # SU x # cells
-    X_in : T x # pixels
-    Y_in : T x # cells
-
+  Args :
+    K : Subunit filters, (dims: # n_pix x #SU).
+    b : Subunit weights for different cells (dims: # SU x # cells).
+    X_in : Stimulus (dims: # samples x # pixels).
+    Y_in : Responses (dims: # samples x # cells).
+    nl_params : Nonlinearity parameters (dims: 2 x 1, defaults to no nonlinearity).
+    
+  Returns :
+    fsum : Predicted firing rate (dims: # samples x # cells).
+    loss : Prediction loss (dims : # cells).
   """
   f = np.exp(np.expand_dims(np.dot(X_in, K), 2) + b)  # T x SU x Cells
   fsum = f.sum(1)  # T x # cells
@@ -30,6 +34,15 @@ def compute_fr_loss(K, b, X_in, Y_in, nl_params=np.expand_dims(np.array([1.0, 0.
 
 
 def get_neighbormat(mask_matrix, nbd=1):
+  """ Compute the adjacency matrix for nearby pixels
+  
+  Args: 
+    mask_matrix : 2D visual stimulus mask, active pixels are 1 (dims : # stimulus dim 1 x # stimulus dim 2).
+    nbd : Neighborhood size (scalar).
+    
+  Returns : 
+    neighbor_mat : 2D adjacency matrix (dims: # active pixels x # active pixels).
+  """
   mask = np.ndarray.flatten(mask_matrix)>0
 
   x = np.repeat(np.expand_dims(np.arange(mask_matrix.shape[0]), 1), mask_matrix.shape[1], 1)
@@ -54,6 +67,39 @@ def spike_triggered_clustering(X, Y, Ns, tms_tr, tms_tst, K=None, b=None,
                                lam_proj=0, eps_proj=0.01,
                                save_filename_partial=None,
                                fitting_phases=[1, 2, 3]):
+  """ Subunit estimation using spike triggered clustering.
+  
+  The fitting proceeds in three phases - 
+  First phase: Ignoring the output nonlinearity and soft-clustering of spike triggered stimuli to estimate K and b.
+  Second phase: Fix K, optimize b and output nonlinearity by gradient descent.
+  Third phase : Optimize K, b and the nonlinearity by gradient descent.
+  
+  Args: 
+    X : Stimulus (dims: # samples x # pixels).
+    Y: Responses (dims: # samples x # cells).
+    Ns: Number of subunits (scalar).
+    tms_tr: Sample indices used for training (dims: # training samples).
+    tms_tst: Samples indices for validation (dims: # validation samples).
+    K: Initial subunit filter (dims: # pixels x Ns).
+    b: Initial weights for different subunits (dims: Ns x # cells).
+    steps_max: Maximum number of steps for first phase.
+    eps: Threshold change of loss, for convergence.
+    projection_type: Regularization type ('lnl1' or 'l1').
+    neighbor_mat: Adjacency matrix for pixels (dims: # pixels x # pixels).
+    lam_proj: Regularization strength.
+    eps_proj: Hyperparameter for 'lnl1' regularization.
+    save_filename_partial: Checkpoint filename.
+    fitting_phases: Phases of fitting to be applied (list with elements from {1, 2, 3}).
+    
+  Returns:
+    K : Final subunit filters, (dims: # n_pix x #SU).
+    b : Final subunit weights for different cells (dims: # SU x # cells).
+    alpha: Softmax weights for each stimulus and different subunits (dims: # samples x Ns).
+    lam_log: Training loss curve.
+    lam_log_test: Validation loss curve.
+    fitting_phase: The phase (1/2/3) corresponding to each iteration.
+    fit_params: Outputs (K, b, nonlinearity parameters) after each fitting phase. 
+  """
   # projection_op='lnl1'
 
   # X is Txmask
@@ -249,72 +295,11 @@ def spike_triggered_clustering(X, Y, Ns, tms_tr, tms_tst, K=None, b=None,
   return K, b, alpha, lam_log, lam_log_test, fitting_phase, fit_params
 
 
-def fit_all(X_tr, Y_tr, X_test, Y_test,
-            Ns=5, K=None, b=None, params=None,
-            train_phase=2, lr=0.1, eps=1e-9):
-
-  X = tf.placeholder(tf.float32)  # T x Nsub
-  Y = tf.placeholder(tf.float32)  # T
-
-  # initialize filters
-  if K is None or b is None or params is None:
-    raise "Not initialized"
-
-  K_tf = tf.Variable(K.astype(np.float32))
-  b_tf = tf.Variable(b.astype(np.float32))
-  params_tf = tf.Variable(np.array(params).astype(np.float32))
-
-  lam_int = tf.reduce_sum(tf.exp(tf.expand_dims(tf.matmul(X, K_tf), 2) + b_tf), 1) # T x # cells
-  # lam = params_tf[0]*lam_int / (params_tf[1]*lam_int + 1)
-  lam = tf.pow(lam_int, params_tf[0, :])/ (params_tf[1, :] * lam_int + 1) # T x # cells
-  loss = tf.reduce_mean(lam, 0) - tf.reduce_mean(Y * tf.log(lam), 0)
-  loss_all_cells = tf.reduce_sum(loss)
-
-  if train_phase == 2:
-    train_op = tf.train.AdamOptimizer(lr).minimize(loss_all_cells, var_list=[b_tf, params_tf])
-  if train_phase == 3:
-    train_op = tf.train.AdamOptimizer(lr).minimize(loss_all_cells, var_list=[K_tf, b_tf, params_tf])
-
-  with tf.control_dependencies([train_op]):
-    param_pos = tf.assign(params_tf[1], tf.nn.relu(params_tf[1]))
-
-  train_op_grp = tf.group(train_op, param_pos)
-
-  with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    K_min = sess.run(K_tf)
-    b_min = sess.run(b_tf)
-    params_min = sess.run(params_tf)
-
-    l_tr_log = []
-    l_test_log = []
-    l_tr_prev = np.inf
-    l_min = np.inf
-    for iiter in range(100000):
-      l_tr, _ = sess.run([loss, train_op_grp], feed_dict={X: X_tr, Y: Y_tr})
-      l_test = sess.run(loss, feed_dict={X: X_test, Y: Y_test})
-
-      l_tr_log += [l_tr]
-      l_test_log += [l_test]
-
-      #print(iiter, l_tr)
-      if np.sum(l_tr) < np.sum(l_min) :
-        K_min = sess.run(K_tf)
-        b_min = sess.run(b_tf)
-        params_min = sess.run(params_tf)
-        l_min = l_tr
-
-      if np.sum(np.abs(l_tr_prev - l_tr)) < eps:
-        # print('Nonlinearity fit after : %d iters, Train loss: %.7f' % (iiter, l_tr))
-        break
-      l_tr_prev = l_tr
-
-    return K_min, b_min, params_min, l_tr_log, l_test_log
-
-
 def fit_scales(X_tr, Y_tr, X_test, Y_test,
                Ns=5, K=None, b=None, params=None, lr=0.1, eps=1e-9):
-
+  """Second phase of fitting. """
+  
+  
   X = tf.placeholder(tf.float32)  # T x Nsub
   Y = tf.placeholder(tf.float32)  # T x n_cells
 
@@ -375,3 +360,65 @@ def fit_scales(X_tr, Y_tr, X_test, Y_test,
     return K_min, b_min, params_min, l_tr_log, l_test_log
 
 
+def fit_all(X_tr, Y_tr, X_test, Y_test,
+            Ns=5, K=None, b=None, params=None,
+            train_phase=2, lr=0.1, eps=1e-9):
+  """Third phase of fitting. """
+  
+  X = tf.placeholder(tf.float32)  # T x Nsub
+  Y = tf.placeholder(tf.float32)  # T
+
+  # initialize filters
+  if K is None or b is None or params is None:
+    raise "Not initialized"
+
+  K_tf = tf.Variable(K.astype(np.float32))
+  b_tf = tf.Variable(b.astype(np.float32))
+  params_tf = tf.Variable(np.array(params).astype(np.float32))
+
+  lam_int = tf.reduce_sum(tf.exp(tf.expand_dims(tf.matmul(X, K_tf), 2) + b_tf), 1) # T x # cells
+  # lam = params_tf[0]*lam_int / (params_tf[1]*lam_int + 1)
+  lam = tf.pow(lam_int, params_tf[0, :])/ (params_tf[1, :] * lam_int + 1) # T x # cells
+  loss = tf.reduce_mean(lam, 0) - tf.reduce_mean(Y * tf.log(lam), 0)
+  loss_all_cells = tf.reduce_sum(loss)
+
+  if train_phase == 2:
+    train_op = tf.train.AdamOptimizer(lr).minimize(loss_all_cells, var_list=[b_tf, params_tf])
+  if train_phase == 3:
+    train_op = tf.train.AdamOptimizer(lr).minimize(loss_all_cells, var_list=[K_tf, b_tf, params_tf])
+
+  with tf.control_dependencies([train_op]):
+    param_pos = tf.assign(params_tf[1], tf.nn.relu(params_tf[1]))
+
+  train_op_grp = tf.group(train_op, param_pos)
+
+  with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    K_min = sess.run(K_tf)
+    b_min = sess.run(b_tf)
+    params_min = sess.run(params_tf)
+
+    l_tr_log = []
+    l_test_log = []
+    l_tr_prev = np.inf
+    l_min = np.inf
+    for iiter in range(100000):
+      l_tr, _ = sess.run([loss, train_op_grp], feed_dict={X: X_tr, Y: Y_tr})
+      l_test = sess.run(loss, feed_dict={X: X_test, Y: Y_test})
+
+      l_tr_log += [l_tr]
+      l_test_log += [l_test]
+
+      #print(iiter, l_tr)
+      if np.sum(l_tr) < np.sum(l_min) :
+        K_min = sess.run(K_tf)
+        b_min = sess.run(b_tf)
+        params_min = sess.run(params_tf)
+        l_min = l_tr
+
+      if np.sum(np.abs(l_tr_prev - l_tr)) < eps:
+        # print('Nonlinearity fit after : %d iters, Train loss: %.7f' % (iiter, l_tr))
+        break
+      l_tr_prev = l_tr
+
+    return K_min, b_min, params_min, l_tr_log, l_test_log
