@@ -23,6 +23,9 @@ plt.imshow(np.reshape(sta[:, 0], [stim_dim1, stim_dim2]),
          cmap='gray', interpolation='nearest')
 ```
 
+![sta](doc/sta.png "Receptive field")
+
+
 ## Fitting
 Model paramerters are estimated using 
 ```python
