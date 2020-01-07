@@ -83,15 +83,22 @@ pred_test, loss_test = su_model.compute_fr_loss(k, b, stim_use[tms_test, :], res
 
 For locally normalized L1 regularization (promotes spatial locality, see paper) : 
 ```python
+# L1 regularization
+lam_proj = 0.1
+projection_type = 'lnl1'
+
+# Locally normalized L1 regularization
 mask = np.ones((stim_dim1, stim_dim2)).astype(np.bool)
 neighbor_mat = su_model.get_neighbormat(mask, nbd=1)
 lam_proj = 0.1
+projection_type = 'lnl1'
 
+# Fit the model for either regularization.
 op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
                                          tms_train,
                                          tms_validate,
                                          steps_max=10000, eps=1e-9,
-                                         projection_type='lnl1',
+                                         projection_type=projection_type,
                                          neighbor_mat=neighbor_mat,
                                          lam_proj=lam_proj, eps_proj=0.01,
                                          save_filename_partial='test', 
@@ -99,6 +106,6 @@ op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
 k, b, nl_params, lam_log_train, lam_log_validation, fitting_phase, fit_params = op
 ```
 
-Similar to above, visualize the subunits. 
-
+The subunits are cleaner (less background noise) for for LNL1 regularization.
+![su_reg](doc/su_reg.png "Regularization")
 
