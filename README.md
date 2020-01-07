@@ -23,29 +23,58 @@ plt.imshow(np.reshape(sta[:, 0], [stim_dim1, stim_dim2]),
          cmap='gray', interpolation='nearest')
 ```
 
+![sta](doc/sta.png "Receptive field")
+
+
 ## Fitting
-Model paramerters are estimated using 
+Set fitting parameters and partition the data.
+
+```python
+nsub = 5  # number of subunits.
+
+# Take last 10% as testing, and randomly partition the remaining samples for training and validation. 
+frac_test = 0.1  
+tms_test = np.arange(np.floor(stim_use.shape[0]*(1 - frac_test)),
+	    				   1*np.floor(stim_use.shape[0])).astype(np.int)
+
+frac_validate = 0.1
+frac_train = 1 - frac_test - frac_validate
+perm = np.random.permutation(tms_train_validate)
+tms_train_validate = np.arange(0, np.floor(
+	    stim_use.shape[0]*(1 - frac_test))).astype(np.int)
+tms_train = perm[0: np.int(np.floor(frac_train * perm.shape[0]))]
+tms_validate = perm[np.int(np.floor((1 - frac_validate) * perm.shape[0])): np.int(perm.shape[0])]
+```
+
+Estimate model parameters, without any regularization. 
 ```python
 op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
                                          tms_train,
                                          tms_validate,
-                                         steps_max=10000, eps=1e-9,
-                                         projection_type=projection_type,
-                                         neighbor_mat=neighbor_mat,
-                                         lam_proj=lam_proj, eps_proj=0.01,
-                                         save_filename_partial=save_filename_partial, 
+                                         save_filename_partial='test', 
                                          fitting_phases=[1, 2, 3])
-
 k, b, nl_params, lam_log_train, lam_log_validation, fitting_phase, fit_params = op
 ```
 
 
-Evaluate loss on test data:
+Evaluate fits
+
+a) Visualize fits
+```python
+for isub in range(nsub):
+  plt.subplot(1, nsub, isub + 1)
+  plt.imshow(np.reshape(k[:, isub], [stim_dim1, stim_dim2]), cmap='gray', interpolation='nearest')
+  plt.xticks([])
+  plt.yticks([])
+```
+
+
+b) Predict firing rate and loss on test data.
 
 ```python
 fitting_phase = 1
 k, b, nl_params = fit_params[fitting_phase] 
-lam_test = su_model.compute_fr_loss(k, b, stim_use[tms_test, :], resp_use[tms_test, :],
+pred_test, loss_test = su_model.compute_fr_loss(k, b, stim_use[tms_test, :], resp_use[tms_test, :],
                                     nl_params=nl_params)
 ```
 
