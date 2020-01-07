@@ -56,8 +56,6 @@ op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
 k, b, nl_params, lam_log_train, lam_log_validation, fitting_phase, fit_params = op
 ```
 
-Evaluate fits - 
-
 a) Visualize filters :
 ```python
 for isub in range(nsub):
