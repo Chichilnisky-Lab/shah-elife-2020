@@ -46,7 +46,7 @@ tms_train = perm[0: np.int(np.floor(frac_train * perm.shape[0]))]
 tms_validate = perm[np.int(np.floor((1 - frac_validate) * perm.shape[0])): np.int(perm.shape[0])]
 ```
 
-Estimate model parameters, without any regularization. 
+### Estimate model parameters, without any regularization. 
 ```python
 op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
                                          tms_train,
@@ -55,11 +55,10 @@ op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
                                          fitting_phases=[1, 2, 3])
 k, b, nl_params, lam_log_train, lam_log_validation, fitting_phase, fit_params = op
 ```
-![su_noreg](doc/su_noreg.png "No regularization")
 
-Evaluate fits
+Evaluate fits - 
 
-a) Visualize fits
+a) Visualize filters :
 ```python
 for isub in range(nsub):
   plt.subplot(1, nsub, isub + 1)
@@ -67,9 +66,10 @@ for isub in range(nsub):
   plt.xticks([])
   plt.yticks([])
 ```
+![su_noreg](doc/su_noreg.png "No regularization")
 
 
-b) Predict firing rate and loss on test data.
+b) Predict firing rate and loss on test data :
 
 ```python
 fitting_phase = 1
@@ -77,4 +77,28 @@ k, b, nl_params = fit_params[fitting_phase]
 pred_test, loss_test = su_model.compute_fr_loss(k, b, stim_use[tms_test, :], resp_use[tms_test, :],
                                     nl_params=nl_params)
 ```
+
+
+### Alternatively, use regularization. 
+
+For locally normalized L1 regularization (promotes spatial locality, see paper) : 
+```python
+mask = np.ones((stim_dim1, stim_dim2)).astype(np.bool)
+neighbor_mat = su_model.get_neighbormat(mask, nbd=1)
+lam_proj = 0.1
+
+op = su_model.spike_triggered_clustering(stim_use, resp_use, nsub,
+                                         tms_train,
+                                         tms_validate,
+                                         steps_max=10000, eps=1e-9,
+                                         projection_type='lnl1',
+                                         neighbor_mat=neighbor_mat,
+                                         lam_proj=lam_proj, eps_proj=0.01,
+                                         save_filename_partial='test', 
+                                         fitting_phases=[1, 2, 3])		
+k, b, nl_params, lam_log_train, lam_log_validation, fitting_phase, fit_params = op
+```
+
+Similar to above, visualize the subunits. 
+
 
