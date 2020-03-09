@@ -33,9 +33,9 @@ plt.imshow(np.reshape(sta[:, 0], [stim_dim1, stim_dim2]),
 To apply the model to your own data, prepare two numpy arrays : stimulus (`stim_use`: Time x Dimensions) and responses (`resp_use`: Time x Cells). 
 
 Each row of visual stimulus and responses represents an distinct sample. Based on the application, the 'Dimensions' could be:
-..* `Dimensions = X * Y * time_window` - the flattened spatio-temporal stimulus.  
-..* `Dimensions = X * Y` - where the spatio-temporal stimulus is prefiltered in time. One approach is to estimate the temporal kernel from the STA, and filter each pixel (in time) with this. This approach is used in the paper to estimate spatial subunits.
-..* `Dimensions = time_window` - where the spatio-temporal stimulus is prefiltered in space with the receptive field. This approach estimates temporal subunits.
+• `Dimensions = X * Y * time_window` - the flattened spatio-temporal stimulus.  
+• `Dimensions = X * Y` - where the spatio-temporal stimulus is prefiltered in time. One approach is to estimate the temporal kernel from the STA, and filter each pixel (in time) with this. This approach is used in the paper to estimate spatial subunits.
+• `Dimensions = time_window` - where the spatio-temporal stimulus is prefiltered in space with the receptive field. This approach estimates temporal subunits.
 
 ## Fitting
 Set fitting parameters and partition the data.
