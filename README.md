@@ -5,6 +5,10 @@ Code for "Nishal P. Shah, N. Brackbill, C. Rhoades, A. Tikidji-Hamburyan, G. Goe
 The code requires Python 2, Tensorflow 1.x, and other standard libraries such as numpy, scipy and pickle.
 
 ## Prepare data
+
+You can either use the data associated with the paper, or use your own data. 
+
+### Data from the paper
 The data associated with the paper can be downloaded from "Shah, Nishal et al. (2020), Inference of nonlinear receptive field subunits with spike-triggered clustering, v4, Dryad, Dataset, https://doi.org/10.5061/dryad.dncjsxkvk"
 
 The data for a given figure are loaded using pickle. 
@@ -25,6 +29,13 @@ plt.imshow(np.reshape(sta[:, 0], [stim_dim1, stim_dim2]),
 
 ![sta](doc/sta.png "Receptive field")
 
+### Your own data
+To apply the model to your own data, prepare two numpy arrays : stimulus (`stim_use`: Time x Dimensions) and responses (`resp_use`: Time x Cells). 
+
+Each row of visual stimulus and responses represents an distinct sample. Based on the application, the 'Dimensions' could be:
+..* `Dimensions = X * Y * time_window` - the flattened spatio-temporal stimulus.  
+..* `Dimensions = X * Y` - where the spatio-temporal stimulus is prefiltered in time. One approach is to estimate the temporal kernel from the STA, and filter each pixel (in time) with this. This approach is used in the paper to estimate spatial subunits.
+..* `Dimensions = time_window` - where the spatio-temporal stimulus is prefiltered in space with the receptive field. This approach estimates temporal subunits.
 
 ## Fitting
 Set fitting parameters and partition the data.
