@@ -94,7 +94,7 @@ For locally normalized L1 regularization (promotes spatial locality, see paper) 
 ```python
 # L1 regularization
 lam_proj = 0.1
-projection_type = 'lnl1'
+projection_type = 'l1'
 
 # Locally normalized L1 regularization
 mask = np.ones((stim_dim1, stim_dim2)).astype(np.bool)
