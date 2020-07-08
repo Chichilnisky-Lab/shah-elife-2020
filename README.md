@@ -50,9 +50,9 @@ tms_test = np.arange(np.floor(stim_use.shape[0]*(1 - frac_test)),
 
 frac_validate = 0.1
 frac_train = 1 - frac_test - frac_validate
-perm = np.random.permutation(tms_train_validate)
 tms_train_validate = np.arange(0, np.floor(
 	    stim_use.shape[0]*(1 - frac_test))).astype(np.int)
+perm = np.random.permutation(tms_train_validate)
 tms_train = perm[0: np.int(np.floor(frac_train * perm.shape[0]))]
 tms_validate = perm[np.int(np.floor((1 - frac_validate) * perm.shape[0])): np.int(perm.shape[0])]
 ```
